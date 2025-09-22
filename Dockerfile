@@ -35,8 +35,6 @@ ENV CC=$CC
 # Add the source code ( see .dockerignore )
 COPY . .
 
-RUN releaser/releaser.sh
-
 ##################################################################################
 FROM scratch AS plik-release-archive
 
