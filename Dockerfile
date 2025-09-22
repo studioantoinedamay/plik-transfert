@@ -1,70 +1,28 @@
-##################################################################################
-FROM --platform=$BUILDPLATFORM node:20-alpine AS plik-frontend-builder
+# Étape 1 : Builder Plik
+FROM golang:1.20-alpine AS builder
 
-# Install needed binaries
-RUN apk add --no-cache git make bash
+RUN apk add --no-cache git bash
 
-# Add the source code
-COPY Makefile .
-COPY webapp /webapp
+WORKDIR /app
 
-RUN make clean-frontend frontend
-
-##################################################################################
-FROM --platform=$BUILDPLATFORM golang:1-bullseye AS plik-builder
-
-# Install needed binaries
-RUN apt-get update && apt-get install -y build-essential crossbuild-essential-armhf crossbuild-essential-armel crossbuild-essential-arm64 crossbuild-essential-i386
-
-# Prepare the source location
-RUN mkdir -p /go/src/github.com/root-gg/plik
-WORKDIR /go/src/github.com/root-gg/plik
-
-# Copy webapp build from previous stage
-COPY --from=plik-frontend-builder /webapp/dist webapp/dist
-
-ARG CLIENT_TARGETS=""
-ENV CLIENT_TARGETS=$CLIENT_TARGETS
-
-ARG TARGETOS TARGETARCH TARGETVARIANT CC
-ENV TARGETOS=$TARGETOS
-ENV TARGETARCH=$TARGETARCH
-ENV TARGETVARIANT=$TARGETVARIANT
-ENV CC=$CC
-
-# Add the source code ( see .dockerignore )
 COPY . .
 
-##################################################################################
-FROM scratch AS plik-release-archive
+# ⚠️ On ne lance pas releaser.sh
+# RUN releaser/releaser.sh
 
-#COPY --from=plik-builder --chown=1000:1000 /go/src/github.com/root-gg/plik/plik-*.tar.gz /
+# Build du binaire Plik
+RUN go build -o plik ./cmd/plik
 
-COPY --from=plik-builder /app/plik /home/plik/plik
-COPY --from=plik-builder /app/public /home/plik/public
-COPY --from=plik-builder /app/config /home/plik/config
+# Étape 2 : Image finale
+FROM alpine:latest
 
-##################################################################################
-FROM alpine:3.18 AS plik-image
+WORKDIR /app
 
-RUN apk add --no-cache ca-certificates
+# Copier le binaire et fichiers nécessaires
+COPY --from=builder /app/plik /app/plik
+COPY --from=builder /app/public /app/public
+COPY --from=builder /app/config /app/config
 
-# Create plik user
-ENV USER=plik
-ENV UID=1000
+EXPOSE 80
 
-# See https://stackoverflow.com/a/55757473/12429735
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/home/plik" \
-    --shell "/bin/false" \
-    --uid "${UID}" \
-    "${USER}"
-
-COPY --from=plik-builder --chown=1000:1000 /go/src/github.com/root-gg/plik/release /home/plik/
-
-EXPOSE 8080
-USER plik
-WORKDIR /home/plik/server
-CMD ./plikd
+CMD ["/app/plik"]
