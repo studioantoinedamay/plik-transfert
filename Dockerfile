@@ -10,8 +10,8 @@ COPY . .
 # ⚠️ On ne lance pas releaser.sh
 # RUN releaser/releaser.sh
 
-# Build du binaire Plik
-RUN go build -o plik ./cmd/plik
+# Build du binaire depuis la racine
+RUN go build -o plik .
 
 # Étape 2 : Image finale
 FROM alpine:latest
