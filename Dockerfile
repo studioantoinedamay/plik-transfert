@@ -38,7 +38,11 @@ COPY . .
 ##################################################################################
 FROM scratch AS plik-release-archive
 
-COPY --from=plik-builder --chown=1000:1000 /go/src/github.com/root-gg/plik/plik-*.tar.gz /
+#COPY --from=plik-builder --chown=1000:1000 /go/src/github.com/root-gg/plik/plik-*.tar.gz /
+
+COPY --from=plik-builder /app/plik /home/plik/plik
+COPY --from=plik-builder /app/public /home/plik/public
+COPY --from=plik-builder /app/config /home/plik/config
 
 ##################################################################################
 FROM alpine:3.18 AS plik-image
